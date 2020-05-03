@@ -1,0 +1,70 @@
+Name     MD_Build_in_Game ;
+PartNo   00 ;
+Date     24.01.2016 ;
+Revision 2.0 ;
+Designer borti4938 ;
+Company  Circuit-Board.de ;
+Assembly None ;
+Location  ;
+Device   g16v8as ; // simple mode
+
+/* *************** INPUT PINS ******************** */
+PIN  1 = DISKn;     /* /DISK (ExpPort B2)                       */ 
+PIN  2 = ROM_Mode2; /* high/open = 1 game     , low = 2 games   */ 
+PIN  3 = ROM_Mode4; /* high/open = 1/2 game(s), low = 4 games   */
+                    /* low = 4 games (beats ROM_Mode2)          */ 
+PIN  4 = CARTn;     /* /CART (from ASIC cart slot B32,          */
+                    /*        cutted from ASIC)                 */
+PIN  5 = ASIC_OEn;  /* /OE (from ASIC; cutted from cart slot    */
+                    /*                 B17 if TMSS Mod is used) */
+PIN  6 = CEn;       /* /CE (cart slot B16)                      */ 
+PIN  7 = A23;       /* A23 (cart slot B11)                      */
+PIN  8 = AMSB0;     /* A19 (cart slot  B7)                      */ 
+PIN  9 = AMSB1;     /* A20 (cart slot  B8)                      */
+                    /* (addressbus counts from A1)              */ 
+
+/* *************** I/O PINS ******************** */
+PIN 19 = BIG_Sel0;   /* bank switch LSB                         */ 
+PIN 18 = BIG_Sel1;   /* bank switch MSB                         */ 
+PIN 17 = ASIC_CARTn; /* /CART (from ASIC; cutted from cart      */
+                     /*                   slot B32)             */
+PIN 16 = ROM_OEn;    /* /OE internal EEPROM (29F1610 Pin 14)    */ 
+PIN 15 = ROM_CEn;    /* /CE internal EEPROM (29F1610 Pin 12)    */ 
+PIN 14 = CART_OEn;   /* /OE cartridge (cart slot B17)           */
+PIN 13 = ROM_AMSB0;  /* A18 internal EEPROM (29F1610 Pin  2)    */
+PIN 12 = ROM_AMSB1;  /* A19 internal EEPROM (29F1610 Pin 43)    */ 
+PIN 11 = TMSS_ENn;   /* high = disabled, low = enabled          */
+                     /* /M3 (cart slot B30) AND TMSS-Mod_en     */
+
+
+/* *************** Codes for bankswitch ******************** */
+FIELD BIG_NumCode = [ROM_Mode4, ROM_Mode2];
+$define BIG_1 BIG_NumCode:'b'11
+$define BIG_2 BIG_NumCode:'b'10
+$define BIG_4 ROM_Mode4:'b'0
+
+
+/* *************** /CART output to ASIC *************** */
+APPEND ASIC_CARTn =  TMSS_ENn;                    // TMSS disabled 
+APPEND ASIC_CARTn = !TMSS_ENn & (!DISKn & CARTn); // TMSS enabled
+
+/* *************** /OE control for cartridge or internal game *************** */
+APPEND INT_OEn = A23      &  TMSS_ENn; // TMSS disabled
+APPEND INT_OEn = ASIC_OEn & !TMSS_ENn; // TMSS enabled
+
+/* *************** control cartridge game *************** */
+CART_OEn = INT_OEn;
+
+/* *************** control internal game *************** */
+ROM_EN = DISKn & CARTn; // neither game nor exp. hardware detected
+
+ROM_CEn = !ROM_EN # CEn;
+ROM_OEn = !ROM_EN # INT_OEn;
+
+/* *************** bankswitch according to selection *************** */
+APPEND ROM_AMSB1 = BIG_1 & AMSB1;
+APPEND ROM_AMSB1 = BIG_2 & BIG_Sel0; // use LSB of counter for game selection if two games are in the ROM 
+APPEND ROM_AMSB1 = BIG_4 & BIG_Sel1; // use MSB of counter for game selection if four games are in the ROM
+
+APPEND ROM_AMSB0 = (BIG_1 # BIG_2) & AMSB0;
+APPEND ROM_AMSB0 =  BIG_4          & BIG_Sel0;
